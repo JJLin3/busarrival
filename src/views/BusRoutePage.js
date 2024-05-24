@@ -13,9 +13,8 @@ function compare(a, b) {
 
 export default function BusRoutePage({ route, navigation }) {
   const [routes, setRoutes] = React.useState(null);
-  const [busStops, setBusStops] = React.useState(null);
   const [direction, setDirection] = React.useState(1);
-  const { busNumber, originCode, destinationCode, altOriginCode, altDestinationCode } = route.params;
+  const { busNumber, destinationCode, altDestinationCode } = route.params;
 
   let routeRecordNumber = 0
   let busStopRecordNumber = 0
@@ -30,8 +29,7 @@ export default function BusRoutePage({ route, navigation }) {
       api = `http://datamall2.mytransport.sg/ltaodataservice/BusRoutes?$skip=${routeRecordNumber}`
     }
     const res = await axios.get(api, config);
-    console.log(JSON.stringify(res.data.value, null, '\t'))
-    const data = res.data.value.filter((item) => item.ServiceNo === busNumber);
+    const data = res.data.value;
     return await data;
   }
 
@@ -49,15 +47,15 @@ export default function BusRoutePage({ route, navigation }) {
       const res = axios.get(api, config);
       promises.push(res);
     })
-    
+
     const routes = await Promise.all(promises);
     const actualDatas = routes.map((result) => result.data.value);
 
     return await actualDatas;
   }
 
-  function getBusStopRecordNumbers(newAvailableValue){
-    let recordNumbers = newAvailableValue.map((busstopcode) => { 
+  function getBusStopRecordNumbers(newAvailableValue) {
+    let recordNumbers = newAvailableValue.map((busstopcode) => {
       switch (busstopcode) { // Estimated record number depending on the bus stop code
         case 2:
           busStopRecordNumber = 500;
@@ -94,94 +92,186 @@ export default function BusRoutePage({ route, navigation }) {
           busStopRecordNumber = 0;
           break;
       }
-      return(busStopRecordNumber)
+      return (busStopRecordNumber)
     })
-    return(recordNumbers)
+    return (recordNumbers)
   }
 
-  //set algorithm for guessing the bus stop record number using the bus stop code
+  async function searchForBusStopName(newresults, addition) {
+    let availableValue = [];
+    newresults.filter((item) => !item.BusStopName).forEach((item) => {
+      if (!availableValue) {
+        availableValue.push(parseInt(item.BusStopCode.split('')[0]))
+      } else {
+        if (!availableValue.includes(item.BusStopCode.split('')[0])) {
+          availableValue.push(parseInt(item.BusStopCode.split('')[0]))
+        }
+      }
+    })
+
+    let newAvailableValues = [...new Set(availableValue)]
+    newRecordNumbers = getBusStopRecordNumbers(newAvailableValues);
+    const numb = newRecordNumbers.map((item) => item += addition)
+    let newData = await getBusStopName(numb)
+
+
+    newData.flat().forEach((item) => {
+
+      if (newresults.filter((busstop) => busstop.BusStopCode === item.BusStopCode).length !== 0) {
+        if (newresults.filter((busstop) => ((busstop.BusStopCode === item.BusStopCode))).length === 2) { //for bus route with 2 same bus stops 
+          newresults[newresults.findLastIndex((busstop) => ((busstop.BusStopCode === item.BusStopCode)))].BusStopName = item.Description;
+        }
+        newresults[newresults.findIndex((busstop) => ((busstop.BusStopCode === item.BusStopCode)))].BusStopName = item.Description;
+      }
+    })
+
+    return await newresults;
+  }
+
   async function loadAllBusRoutes(routeRecordNumber) {
     try {
-
       let busStopRoutes = []
-
       //set algorithm for guessing the bus route record number using the first digit of bus number
-      switch (parseInt(busNumber.split('')[0])) { // Estimated record number depending on the bus number
-        case 2:
-          routeRecordNumber = 9000;
-          break;
+      if (busNumber.split('')[0] !== "1") {
+        switch (parseInt(busNumber.split('')[0])) { // Estimated record number depending on the bus number
+          case 2:
+            routeRecordNumber = 9000;
+            break;
 
-        case 3:
-          routeRecordNumber = 11500;
-          break;
+          case 3:
+            routeRecordNumber = 11500;
+            break;
 
-        case 4:
-          routeRecordNumber = 13000;
-          break;
+          case 4:
+            routeRecordNumber = 13000;
+            break;
 
-        case 5:
-          routeRecordNumber = 14000;
-          break;
+          case 5:
+            routeRecordNumber = 14000;
+            break;
 
-        case 6:
-          routeRecordNumber = 15500;
-          break;
+          case 6:
+            routeRecordNumber = 15500;
+            break;
 
-        case 7:
-          routeRecordNumber = 17000;
-          break;
+          case 7:
+            routeRecordNumber = 17000;
+            break;
 
-        case 8:
-          routeRecordNumber = 18500;
-          break;
+          case 8:
+            routeRecordNumber = 18500;
+            break;
 
-        case 9:
-          routeRecordNumber = 21000;
-          break;
+          case 9:
+            routeRecordNumber = 21000;
+            break;
 
-        default:
-          routeRecordNumber = 0;
-          break;
+          default:
+            routeRecordNumber = 0;
+            break;
+        }
+      } else {
+        switch (parseInt(busNumber.split('')[1])) { // Estimated record number depending on the bus number
+          case 1:
+            routeRecordNumber = 1000;
+            break;
+
+          case 2:
+            routeRecordNumber = 1500;
+            break;
+
+          case 3:
+            routeRecordNumber = 2000;
+            break;
+
+          case 4:
+            routeRecordNumber = 3000;
+            break;
+
+          case 5:
+            routeRecordNumber = 4000;
+            break;
+
+          case 6:
+            routeRecordNumber = 5000;
+            break;
+
+          case 7:
+            routeRecordNumber = 6000;
+            break;
+
+          case 8:
+            routeRecordNumber = 7500;
+            break;
+
+          case 9:
+            routeRecordNumber = 8000;
+            break;
+
+          default:
+            routeRecordNumber = 0;
+            break;
+        }
       }
 
       let data = await getBusRoute(routeRecordNumber);
-      console.log(JSON.stringify(data) + " _ " + routeRecordNumber)
       let data1 = []
-      if (data.some((item) => item.ServiceNo === busNumber)) {
 
-        if (lastDestinationCode) {
-          if (data[data.length-1].BusStopCode !== lastDestinationCode) { //don't have the destination code or direction 2 destination code as the last element in current bus record
-            routeRecordNumber += 500;
-            
-            data1 = await getBusRoute(routeRecordNumber);
-            busStopCodes = data.concat(data1)
-            busStopRoutes = busStopCodes.map((item) => {
-              let obj = {};
+      if (data.some((item) => item.ServiceNo !== busNumber)) {// if request data doesn't contain the data required then loop until the data required is found
 
-              obj.BusStopCode = item.BusStopCode;
-              obj.Direction = item.Direction;
-              obj.StopSequence = item.StopSequence;
+        if (lastDestinationCode) {//don't have the destination code or direction 2 destination code as the last element in current bus record
+          for (let i = routeRecordNumber; i <= (routeRecordNumber + 500 * 5); i += 500) {
+            data1[i / 500] = await getBusRoute(i);
+            let newData = data1[i / 500].filter((item) => item.ServiceNo === busNumber)
+            if (data1[i / 500].some((item) => item.ServiceNo === busNumber)) {
+              busStopCodes = busStopCodes.concat(newData);
+              if (newData[newData.length - 1].BusStopCode === lastDestinationCode && newData[newData.length - 1].StopSequence !== 1) { //it mean is the last entry but it isn't the first bus stop number
+                break;
+              };
+            };
+          };
+          busStopRoutes = busStopCodes.flat().map((item) => {
+            let obj = {};
 
-              return (obj);
-            })
+            obj.BusStopCode = item.BusStopCode;
+            obj.Direction = item.Direction;
+            obj.StopSequence = item.StopSequence;
 
-          } else {
-            busStopRoutes = data.map((item) => {
-              let obj = {};
+            return (obj);
+          })
 
-              obj.BusStopCode = item.BusStopCode;
-              obj.Direction = item.Direction;
-              obj.StopSequence = item.StopSequence;
-
-              return (obj);
-            })
-          }
-        }
-        busStopRoutes.sort(compare);       
+        };
+        busStopRoutes.sort(compare);
 
       } else {
-        routeRecordNumber += 500
+        if (data[data.length - 1].BusStopCode !== lastDestinationCode) { //don't have the destination code or direction 2 destination code as the last element in current bus record
+          routeRecordNumber += 500;
+
+          data1 = await getBusRoute(routeRecordNumber);
+          busStopCodes = data.concat(data1)
+          busStopRoutes = busStopCodes.map((item) => {
+            let obj = {};
+
+            obj.BusStopCode = item.BusStopCode;
+            obj.Direction = item.Direction;
+            obj.StopSequence = item.StopSequence;
+
+            return (obj);
+          });
+
+        } else {
+          busStopRoutes = data.map((item) => {
+            let obj = {};
+
+            obj.BusStopCode = item.BusStopCode;
+            obj.Direction = item.Direction;
+            obj.StopSequence = item.StopSequence;
+
+            return (obj);
+          });
+        };
       }
+      console.log('here: ' + JSON.stringify(busStopRoutes) + " \n\n " + routeRecordNumber)
       return (busStopRoutes)
 
     } catch (error) {
@@ -189,99 +279,29 @@ export default function BusRoutePage({ route, navigation }) {
     }
   };
 
-  async function loadAllBusStop(newAvailableValue, busStopRecordNumber, busRoute) {
+  async function loadAllBusStop(busRoute) {
     try {
-
-      let recordNumbers = getBusStopRecordNumbers(newAvailableValue);
-      let newRecordNumbers = [...new Set(recordNumbers)]
-      let data = await getBusStopName(newRecordNumbers);
-       
       let newroutes = busRoute.map(a => Object.assign({}, a)); //copy of array of object 
 
-      data.flat().forEach((item) => {
-        if (newroutes.filter((busstop) => busstop.BusStopCode === item.BusStopCode).length !== 0) {
-          newroutes[newroutes.findIndex((busstop) => ((busstop.BusStopCode === item.BusStopCode) && !busstop.hasOwnProperty("BusStopName")))].BusStopName = item.Description;
+      newroutes = await searchForBusStopName(newroutes, 0)
+
+      if (newroutes.filter((busstop) => !busstop.BusStopName).length > 0) {
+        newroutes = await searchForBusStopName(newroutes, 500)
+        if (newroutes.filter((busstop) => !busstop.BusStopName).length > 0) {
+          newroutes = await searchForBusStopName(newroutes, 1000)
         }
-      })
-
-      if(newroutes.filter((item) => !item.BusStopName).length !== 0){
-        let availableValue = [];
-        newroutes.filter((item) => !item.BusStopName).forEach((item) => {
-          if (!availableValue) {
-            availableValue.push(parseInt(item.BusStopCode.split('')[0]))
-          } else {
-            if (!availableValue.includes(item.BusStopCode.split('')[0])) {
-              availableValue.push(parseInt(item.BusStopCode.split('')[0]))
-            }
-          }
-        })
-        let newAvailableValues= [...new Set(availableValue)]
-        newRecordNumbers = getBusStopRecordNumbers(newAvailableValues);
-        const numb = newRecordNumbers.map((item) => item+=500)
-        let newData = await getBusStopName(numb)
-
-        newData.flat().forEach((item) => {
-          
-          if (newroutes.filter((busstop) => busstop.BusStopCode === item.BusStopCode).length !== 0) {
-            if(newroutes.filter((busstop) => ((busstop.BusStopCode === item.BusStopCode))).length > 1){ //for bus route with 2 same bus stops 
-              newroutes[newroutes.findLastIndex((busstop) => ((busstop.BusStopCode === item.BusStopCode) && !busstop.hasOwnProperty("BusStopName")))].BusStopName = item.Description;
-            }
-            newroutes[newroutes.findIndex((busstop) => ((busstop.BusStopCode === item.BusStopCode) && !busstop.hasOwnProperty("BusStopName")))].BusStopName = item.Description;
-          }
-        })
       }
-      console.log('here: ' + JSON.stringify(newroutes))
-
       setRoutes(newroutes)
     } catch (error) {
       console.error(error)
     }
   }
 
-
   React.useEffect(() => {
-    // if (routes) {
-    //   let availableValue = [];
-    //   routes.forEach((item) => {
-    //     if (!availableValue) {
-    //       availableValue.push(item.BusStopCode.split('')[0])
-    //     } else {
-    //       if (!availableValue.includes(item.BusStopCode.split('')[0])) {
-    //         availableValue.push(parseInt(item.BusStopCode.split('')[0]))
-    //       }
-    //     }
-    //   })
-    //   let newAvailableValue = new Set(availableValue)
-    //   newAvailableValue.forEach((busstopcode) => {
-    //     // loadAllBusStop(busstopcode);
-    //   })
 
-    // } else {
-
-    // }
     loadAllBusRoutes(routeRecordNumber).then((busRoute) => {
-      let availableValue = [];
-      busRoute.forEach((item) => {
-          if (!availableValue) {
-            availableValue.push(parseInt(item.BusStopCode.split('')[0]))
-          } else {
-            if (!availableValue.includes(item.BusStopCode.split('')[0])) {
-              availableValue.push(parseInt(item.BusStopCode.split('')[0]))
-            }
-          }
-        })
-        let newAvailableValue = [...new Set(availableValue)]
-          loadAllBusStop(newAvailableValue, busStopRecordNumber, busRoute);
+      loadAllBusStop(busRoute);
     })
-
-
-    //let newroutes = [];
-    // busStops.forEach((busStop) => {
-    //   if(routes.some((item) => item.BusStopCode === busStop.BusStopCode)){
-    //     newroutes.push(busStop.Description)
-    //   }
-    // })
-
   }, []);
 
   return (
@@ -310,8 +330,8 @@ export default function BusRoutePage({ route, navigation }) {
         </DataTable.Header>
 
         {routes !== null ? routes.filter((item) => item.Direction === direction).map((item, index) => (
-          <DataTable.Row key={index}>
-            <DataTable.Cell>{item.BusStopCode}</DataTable.Cell>
+          <DataTable.Row key={index} onPress={() => { navigation.navigate('Bus Timing', { busStopCode: item.BusStopCode }) }} >
+            <DataTable.Cell>{item.BusStopName}</DataTable.Cell>
           </DataTable.Row>
         )) : <DataTable.Row></DataTable.Row>}
       </DataTable>

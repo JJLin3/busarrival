@@ -120,7 +120,7 @@ export default function BusSearchResultPage({ navigation }) {
           </DataTable.Header>
 
           {results ? results.map((item, index) => (
-            <DataTable.Row key={index} onPress={() => { navigation.navigate('Bus Route', { busNumber: item.ServiceNo, originCode: item.OriginCode, destinationCode: item.DestinationCode, altOriginCode: item.AltOriginCode, altDestinationCode: item.AltDestinationCode }) }}>
+            <DataTable.Row key={index} onPress={() => { navigation.navigate('Bus Route', { busNumber: item.ServiceNo, destinationCode: item.DestinationCode, altDestinationCode: item.AltDestinationCode }) }}>
               <DataTable.Cell>{item.ServiceNo}</DataTable.Cell>
             </DataTable.Row>
           )) : <DataTable.Row></DataTable.Row>}
